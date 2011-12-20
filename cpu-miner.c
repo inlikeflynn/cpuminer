@@ -88,6 +88,10 @@ static const char *algo_names[] = {
 	[ALGO_SCRYPT]		= "scrypt",
 };
 
+int total_block_count = 0;
+int total_stale_count = 0;
+int current_block_count = 0;
+int current_stale_count = 0;
 bool opt_debug = false;
 bool opt_protocol = false;
 bool want_longpoll = true;
@@ -300,6 +304,11 @@ static bool submit_upstream_work(CURL *curl, const struct work *work)
 
 	applog(LOG_INFO, "PROOF OF WORK RESULT: %s",
 	       json_is_true(res) ? "true (yay!!!)" : "false (booooo)");
+
+        json_is_true(res) ? total_block_count++ : total_stale_count++;
+        json_is_true(res) ? current_block_count++ : current_stale_count++;
+        applog(LOG_INFO, "CURRENT BLOCK STATS: GOOD = %i STALE = %i", current_block_count, current_stale_count);
+
 
 	json_decref(val);
 
@@ -653,6 +662,10 @@ static void *longpoll_thread(void *userdata)
 			json_decref(val);
 
 			applog(LOG_INFO, "LONGPOLL detected new block");
+                        current_block_count = 0;
+                        current_stale_count = 0;
+                        applog(LOG_INFO, "=====> TOTAL BLOCK STATS: GOOD = %i STALE = %i <=====", total_block_count, total_stale_count);
+
 			restart_threads();
 		} else {
 			/* longpoll failed, keep trying */
